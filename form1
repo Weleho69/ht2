@@ -1,0 +1,248 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Drawing.Text;
+using System.Runtime.InteropServices;
+using System.IO;
+using System.Text.RegularExpressions;
+
+namespace HarjoitusTyo2
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+
+        private void tallennaDGV()
+        {
+            try
+            {
+                //tallenetaan koko Dataviegridi rivi kerrallaan samaan tiedostoon ja poistetaan ylimääräiset ','
+                using (StreamWriter tw = new StreamWriter("temp_tietokanta.txt"))
+                {
+                    for (int i = 0; i < dataGridView1.Rows.Count - 1; i++)
+                    {
+                        for (int j = 0; j < dataGridView1.Columns.Count; j++)
+                        {
+                            tw.Write($"{dataGridView1.Rows[i].Cells[j].Value.ToString().Replace(",", "")}");
+
+                            if (j != dataGridView1.Columns.Count - 1)
+                            {
+                                tw.Write(",");
+                            }
+                        }
+                        tw.WriteLine();
+                    }
+                }
+            }
+            catch(Exception)
+            {
+                MessageBox.Show("Virhe tallentaessa tai avatessa tiedostoa.");
+            }
+        }
+
+        private void DGV_Keypress(object sender, KeyPressEventArgs e)
+        {
+            //Keypress eventti joka sallii vain kirjaimet a-Z, 0-9 numerot, ääkköset, backspace ja whitespace kirjaimet
+            var regex = new Regex(@"[^a-zA-ZäöüåÅÄÖÜß0.-9-\s\b]");
+            if (regex.IsMatch(e.KeyChar.ToString()))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void lataaDGV()
+        {
+            //tarkistetaan ensin onko tiedosto olemassa, sitten tehdään dataviewgridiin columnit, luetaan tiedosto ja tiedoston sisältö asetetaan riveille
+            if (File.Exists("temp_tietokanta.txt"))
+            {
+                DataTable poyta = new DataTable();
+                poyta.Columns.Add("ID", typeof(int));
+                poyta.Columns.Add("Etunimi", typeof(string));
+                poyta.Columns.Add("Sukunimi", typeof(string));
+                poyta.Columns.Add("Kutsumanimi", typeof(string));
+                poyta.Columns.Add("Henkilö Tunnus", typeof(string));
+                poyta.Columns.Add("Katuosoite", typeof(string));
+                poyta.Columns.Add("Postinumero", typeof(string));
+                poyta.Columns.Add("Postitoimipaikka", typeof(string));
+                poyta.Columns.Add("Aloituspäivä", typeof(string));
+                poyta.Columns.Add("Lopetuspäivä", typeof(string));
+                poyta.Columns.Add("Nimike", typeof(string));
+                poyta.Columns.Add("Yksikkö", typeof(string));
+                dataGridView1.DataSource = poyta;
+
+                string[] rivit = File.ReadAllLines(@"temp_tietokanta.txt");
+                string[] arvot;
+
+                for (int i = 0; i < rivit.Length; i++)
+                {
+                    arvot = rivit[i].ToString().Split(',');
+                    string[] linja = new string[arvot.Length];
+
+                    for (int j = 0; j < arvot.Length; j++)
+                    {
+                        linja[j] = arvot[j].Trim();
+                    }
+
+                    poyta.Rows.Add(linja);
+                }
+            }
+        }
+
+        // Formin latautumis asetukset
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+            // Keskitetään näyttöön
+            Rectangle screen = Screen.PrimaryScreen.WorkingArea;
+            int w = Width >= screen.Width ? screen.Width : (screen.Width + Width) / 2;
+            int h = Height >= screen.Height ? screen.Height : (screen.Height + Height) / 2;
+            this.Location = new Point((screen.Width - w) / 2, (screen.Height - h) / 2);
+            this.Size = new Size(w, h);
+
+            // 
+            panelNappiContainer.BackColor = Color.FromArgb(210, 37, 110);
+
+            //Yläviiva, tarkoitus on Graafisesti erottaa sisäinen formialue.
+            panelViiva.BackColor = Color.FromArgb(245, 245, 245);
+            panelViivaVasen.BackColor = Color.FromArgb(245, 245, 245);
+
+            // Customoidaan navigointibutton.
+
+            btn1.BackColor = Color.FromArgb(210, 37, 110);
+            btn1.ForeColor = Color.FromArgb(255, 255, 255);
+
+            btnAddUser.BackColor = Color.FromArgb(210, 37, 110);
+            btnAddUser.ForeColor = Color.FromArgb(255, 255, 255);
+
+            btnLogInfo.BackColor = Color.FromArgb(210, 37, 110);
+            btnLogInfo.ForeColor = Color.FromArgb(255, 255, 255);
+
+            button2.BackColor = Color.FromArgb(255, 255, 255);
+            button2.ForeColor = Color.FromArgb(000, 000, 00);
+
+            btnSulje.BackColor = Color.FromArgb(210, 37, 110);
+            btnSulje.ForeColor = Color.FromArgb(255, 255, 255);
+
+            panelKortti.BackColor = Color.FromArgb(255, 255, 255);
+
+
+            ///Datagrid viev
+            lataaDGV();
+            loki.WriteLog("Ladattu käyttäjätiedot tauluun");
+        }
+
+        private Form activeForm = null;
+        private void openChildForm(Form chilForm)
+        {
+            if (activeForm != null)
+                activeForm.Close();
+            activeForm = chilForm;
+            chilForm.TopLevel = false;
+            chilForm.FormBorderStyle = FormBorderStyle.None;
+            chilForm.Dock = DockStyle.Fill;
+            panelFormContainer.Controls.Add(chilForm);
+            panelFormContainer.Tag = chilForm;
+            chilForm.BringToFront();
+            chilForm.Show();
+        }
+
+
+        private void btn1_Click(object sender, EventArgs e)
+        {
+            for (int i = Application.OpenForms.Count - 1; i >= 0; i--)
+            {
+                if (Application.OpenForms[i].Name != "Form1")
+                    Application.OpenForms[i].Close();
+            }
+            lataaDGV();
+            
+        }
+
+        // Avaa Lisää käyttäjä formi
+        private void btnAddUser_Click(object sender, EventArgs e)
+        {
+            openChildForm(new Form2());
+            loki.WriteLog("Avattu lisää käyttäjä formi");
+        }
+
+        private void btnLogInfo_Click(object sender, EventArgs e)
+        {
+            openChildForm(new Form3());
+            loki.WriteLog("Avattu lokitiedosto");
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {  
+            //tallenna nappi suorittaa Tallenna funktion, joka tallentaa dataviewgridin tiedot ja lataus funktion, joka lataa tiedostosta tiedot uudelleen
+
+            tallennaDGV();
+
+            loki.WriteLog("Tallennettiin muutokset henkilöstötietoihin");
+        }
+
+        private void poistaBtn_Click(object sender, EventArgs e)
+        {
+            //poista nappi jossa YES/NO napit
+            try
+            {
+                string[] poistettu = new string[99];
+                DialogResult dg = MessageBox.Show("Haluatko varmasti poistaa tämän henkilön?", "Poistetaanko?", MessageBoxButtons.YesNo);
+                if (dg == DialogResult.Yes)
+                {
+                    int j = 0;
+                    foreach (DataGridViewRow item in dataGridView1.SelectedRows) //poistaa valitun rivin Datagridviewistä
+                    {
+                        int i = dataGridView1.SelectedCells[1].RowIndex;
+                        poistettu[j] = dataGridView1.Rows[i].Cells["Etunimi"].Value.ToString();
+                        dataGridView1.Rows.RemoveAt(item.Index);
+                        j++;
+                    }
+                    tallennaDGV();
+                    string poistetut = string.Join(", ", poistettu, 0, j);
+
+                    loki.WriteLog($"Poistettu käyttäjä(t): {poistetut}");
+                }
+                if (dg == DialogResult.No)
+                {
+
+                }
+            }
+            catch(Exception)
+            {
+                MessageBox.Show("virhe poistaessa käyttäjää");
+            }
+        }
+
+        private void btnSulje_Click(object sender, EventArgs e)
+        { //Lisätty sulje nappi
+
+            DialogResult dialogResult = MessageBox.Show("Haluatko sulkea", "Sulje", MessageBoxButtons.YesNo);
+            if (dialogResult == DialogResult.Yes)
+            {
+                this.Close();
+                loki.WriteLog($"Suljettu ohjelma");
+            }
+            else if (dialogResult == DialogResult.No)
+            {
+
+            }
+        }
+
+        private void dataGridView1_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
+        {
+            //Sallii datagridviewiä muokatessa vain A-ö 0-9 - ja .
+            dataGridView1.EditingControl.KeyPress -= DGV_Keypress;
+            dataGridView1.EditingControl.KeyPress += DGV_Keypress;
+        }
+    }
+}
